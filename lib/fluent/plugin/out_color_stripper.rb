@@ -3,16 +3,10 @@ module Fluent
     Fluent::Plugin.register_output('color_stripper', self)
 
     config_param :tag, :string
-    config_param :strip_fields, :string, default: nil
+    config_param :strip_fields, :array, value_type: :string, default: []
 
     def configure(conf)
       super
-
-      @tag = conf.fetch('tag') { raise ArgumentError, 'tag field is required to direct transformed logs to' }
-
-      @strip_fields_arr = conf['strip_fields'].to_s.split(/\s*,\s*/).map do |field|
-        field unless field.strip.empty?
-      end.compact
     end
 
     def emit(tag, es, chain)
@@ -39,20 +33,11 @@ module Fluent
     # Return uncolorized string
     #
     def uncolorize(string)
-      scan_for_colors(string).inject('') do |str, match|
-        str << (match[3] || match[4])
-      end
-    end
-
-    #
-    # Scan for colorized string
-    #
-    def scan_for_colors(string)
-      string.scan(/\033\[([0-9]+);([0-9]+);([0-9]+)m(.+?)\033\[0m|([^\033]+)/m)
+      string.gsub(/\033\[\d{1,2}(;\d{1,2}){0,2}[mGK]/, '')
     end
 
     def strip_field?(field)
-      @strip_fields_arr.empty? || @strip_fields_arr.include?(field)
+      @strip_fields.empty? || @strip_fields.include?(field)
     end
   end
 end
